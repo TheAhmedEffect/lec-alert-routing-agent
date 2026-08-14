@@ -1,0 +1,14 @@
+This repo implements docs/Master_Vibecoding_Plan_Alert_Routing_Agent.pdf. Read it before changing anything.
+Build strictly module by module. Do not implement a later module early.
+Never remove, relax, or make nullable a database constraint to make a test pass.
+PRIMARY KEY (alert_id, stakeholder_id) on evaluations IS invariant I3.
+UNIQUE on dispatch_attempts.idempotency_key IS invariant I2.
+Never add availability or presence to qualification. Availability appears only as reachability. This is invariant I4.
+Never re-query a stakeholder after the initial pull. New knowledge arrives only as a PresenceBus event, applied via patch_from_push.
+Never widen except IntegrityError to a bare except Exception, and never silence an exception to make a test pass.
+Every Pydantic model listed in the plan stays frozen=True.
+No numeric constant may live outside alert_router/config.py.
+Do not add Celery, LangGraph, Redis, Alembic, or any task queue.
+The LLM renders prose only. It never selects a recipient, never ranks, and is never given routing authority.
+Comment WHY, not what — especially on constraints and on any line that exists to preserve an invariant.
+If a test is hard to pass, say so and explain the conflict. Do not weaken the test.

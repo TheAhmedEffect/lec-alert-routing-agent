@@ -1,0 +1,17 @@
+---
+description: LEC alert-routing assessment architecture and invariants
+alwaysApply: true
+---
+Read docs/Master_Vibecoding_Plan_Alert_Routing_Agent.pdf before changing the repository.
+Build strictly module by module. Do not implement a later module early.
+Never remove, relax, or make nullable a database constraint to make a test pass.
+The composite PRIMARY KEY (alert_id, stakeholder_id) on evaluations and the UNIQUE constraint on dispatch_attempts.idempotency_key are assessment invariants.
+Never add availability or presence to qualification. Availability belongs only in reachability.
+Never re-query a stakeholder after the initial pull. New knowledge arrives only through PresenceBus events and patch_from_push.
+Never widen IntegrityError into a broad exception or silence failures.
+All Pydantic models listed in the plan remain frozen=True.
+No numeric constant may live outside alert_router/config.py.
+Do not add Celery, LangGraph, Redis, Alembic, or another task queue.
+The LLM only renders prose. It never selects, ranks, or changes a recipient.
+Comment why, not what, especially around constraints and concurrency.
+If a test is hard to pass, explain the conflict. Do not weaken the test.
