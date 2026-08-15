@@ -23,7 +23,16 @@ Module 1 surface only. Later modules add ranking, state, executor, decisions,
 context, api and cli.
 """
 
-from .config import DB_URL, LATENCY_MS_RANGE, RNG_SEED
+from .config import (
+    DB_URL,
+    DOMAIN_POINTS,
+    DOWNGRADE_TOLERANCE,
+    LATENCY_MS_RANGE,
+    MIN_QUALIFICATION,
+    ON_CALL_POINTS,
+    RNG_SEED,
+    SENIORITY_POINTS,
+)
 from .db import (
     build_engine,
     build_session_factory,
@@ -35,6 +44,14 @@ from .db import (
     reset_db,
     session_scope,
 )
+from .ranking import (
+    best_by_qualification,
+    build_ladder,
+    clears_floor,
+    floor_for,
+    score,
+    sort_key,
+)
 from .registry import (
     DuplicateQueryError,
     PresenceBus,
@@ -45,6 +62,7 @@ from .registry import (
     is_evaluations_duplicate,
     zero_latency,
 )
+from .state import DispatchState, persist_ladder
 from .schemas import (
     AlertEvent,
     AttemptRecord,
@@ -67,6 +85,20 @@ __all__ = [
     "DB_URL",
     "LATENCY_MS_RANGE",
     "RNG_SEED",
+    "DOMAIN_POINTS",
+    "SENIORITY_POINTS",
+    "ON_CALL_POINTS",
+    "MIN_QUALIFICATION",
+    "DOWNGRADE_TOLERANCE",
+    # ranking and state
+    "score",
+    "sort_key",
+    "build_ladder",
+    "clears_floor",
+    "floor_for",
+    "best_by_qualification",
+    "DispatchState",
+    "persist_ladder",
     # database
     "build_engine",
     "build_session_factory",

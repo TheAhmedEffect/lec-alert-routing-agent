@@ -26,8 +26,10 @@ import pytest
 
 from alert_router import config
 from alert_router.db import build_engine, build_session_factory, init_db
+from alert_router.ranking import build_ladder
 from alert_router.registry import PresenceBus, Registry, zero_latency
-from alert_router.schemas import AlertEvent, Severity
+from alert_router.schemas import AlertEvent, DispatchPlan, Severity
+from alert_router.state import DispatchState
 
 
 class StepClock:
@@ -111,6 +113,40 @@ def critical_alert() -> AlertEvent:
         domain="infrastructure",
         triggered_at=1_000_000.0,
     )
+
+
+@pytest.fixture
+async def snapshots(registry, critical_alert):
+    """The seven infrastructure candidates from ONE pull.
+
+    Spending the query budget in a fixture is deliberate: every ranking test
+    then works from the same single observation, exactly as the real system
+    does, and no test can accidentally pull twice.
+    """
+    return await registry.query_by_domain(critical_alert)
+
+
+@pytest.fixture
+def plan(snapshots, critical_alert, clock) -> DispatchPlan:
+    return build_ladder(snapshots, critical_alert, clock=clock)
+
+
+@pytest.fixture
+def state(critical_alert, snapshots, session_factory, clock) -> DispatchState:
+    return DispatchState.start(
+        critical_alert, snapshots, session_factory=session_factory, clock=clock
+    )
+
+
+@pytest.fixture
+def offline_state(critical_alert, snapshots, clock) -> DispatchState:
+    """A state with NO session factory — pure in-memory.
+
+    Used for the audit-sequence concurrency test, where the unit under test is
+    the lock rather than the database, and 20 concurrent SQLite writes would add
+    contention noise without adding evidence.
+    """
+    return DispatchState.start(critical_alert, snapshots, clock=clock)
 
 
 @pytest.fixture

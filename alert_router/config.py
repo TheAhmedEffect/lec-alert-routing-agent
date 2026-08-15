@@ -172,10 +172,48 @@ SENIORITY_TIER_MIN: Final[int] = 1
 SENIORITY_TIER_MAX: Final[int] = 5
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Module 2 will append here
+# Scoring weights  [Module 2]
 # ─────────────────────────────────────────────────────────────────────────────
-# DOMAIN_POINTS, SENIORITY_POINTS, ON_CALL_POINTS, MIN_QUALIFICATION and
-# DOWNGRADE_TOLERANCE belong in this file and are deliberately NOT defined yet.
-# Module 1 must not be able to score anyone: if the registry could compute a
-# qualification, it would, and the pull/rank boundary would erode on the first
-# convenient occasion.
+# A reviewer will want to change one of these and re-run. Nothing numeric below
+# may be duplicated in ranking.py or anywhere else.
+
+#: Points for domain overlap. `None` for "none" is a SENTINEL MEANING INELIGIBLE,
+#: not zero — someone with no overlap at all is not a weak candidate, they are
+#: not a candidate. ranking.score() branches on it.
+#:
+#: The 100/55 gap is the mechanism behind invariant I4: it is wide enough that a
+#: primary-domain L3 (100+24=124) outranks a secondary-domain L5 (55+40=95), so
+#: specialism beats seniority when the two disagree.
+DOMAIN_POINTS: Final[dict[str, float | None]] = {
+    "primary": 100.0,
+    "secondary": 55.0,
+    "none": None,
+}
+
+#: Multiplied by seniority_tier (1..5), giving 8 through 40. Deliberately
+#: smaller than the domain gap: rank should break ties within a specialism, not
+#: override the specialism itself.
+SENIORITY_POINTS: Final[float] = 8.0
+
+#: Being rostered is worth about half a seniority step. It is a real signal —
+#: the on-call person has agreed to be interrupted — but it is not competence,
+#: so it cannot promote someone past a genuinely better-matched colleague.
+ON_CALL_POINTS: Final[float] = 15.0
+
+#: The minimum competence an alert of each severity deserves, regardless of who
+#: was chosen first. Keyed by Severity.value rather than by the enum, because
+#: this module must not import schemas — schemas imports config.
+MIN_QUALIFICATION: Final[dict[str, float]] = {
+    "low": 0.0,
+    "high": 90.0,
+    "critical": 120.0,
+}
+
+#: How far below the incumbent a replacement may fall. Roughly one seniority
+#: step plus on-call duty. Wider and the floor stops meaning anything; narrower
+#: and legitimate re-routes get refused.
+#:
+#: This constant IS invariant I4's enforcement dial. With Priya at 139 on a
+#: CRITICAL alert the floor is max(120, 139-25) = 120, so Tom clears it at 123
+#: and is refused at 108. Both branches are demonstrated in the demo scenarios.
+DOWNGRADE_TOLERANCE: Final[float] = 25.0
