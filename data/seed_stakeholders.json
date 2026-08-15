@@ -1,0 +1,136 @@
+{
+  "_design_notes": {
+    "purpose": "Ten stakeholders shaped so Appendix A's four scenarios produce the exact matrix rows they are meant to. The arithmetic below is load-bearing; changing a tier or an on_call flag changes which decision row fires.",
+    "scoring": "qualification = DOMAIN_POINTS[fit] + 8 * seniority_tier + (15 if on_call) where DOMAIN_POINTS = {primary: 100, secondary: 55}",
+    "infrastructure_matches": "7 of 10 — 3 primary (Priya, Tom, Elena) + 4 secondary (Marcus, Aisha, Daniel, Yuki)",
+    "critical_floor": "max(120, incumbent - 25). With Priya at 139 the floor is 120: only Tom at 123 clears it, and only while he is on-call.",
+    "scenario_reroute": "Priya 139 online -> offline mid-Slack. Tom 123 clears floor 120. R3.",
+    "scenario_floor": "set_on_call('stk-002', False) drops Tom to 108. Nothing online clears 120. R4 holds Priya on SMS and pages Elena.",
+    "scenario_escalate": "Elena 140 comes online while Priya is in flight. 140 > 139 and severity CRITICAL. R9.",
+    "scenario_failover": "logistics HIGH. Daniel 139 online sorts above Rashid 140 busy on reachability. Daniel prefers Slack; the adapter fails on connect; R6 fails over to email.",
+    "guard": "No ONLINE person other than Priya (139) and Tom (123) reaches qualification >= 120 for infrastructure. The next highest is Daniel at 94."
+  },
+
+  "stakeholders": [
+    {
+      "id": "stk-001",
+      "name": "Priya Raman",
+      "title": "Staff Site Reliability Engineer",
+      "primary_domain": "infrastructure",
+      "secondary_domains": ["networking"],
+      "seniority_tier": 3,
+      "preferred_channel": "slack",
+      "fallback_channels": ["sms", "email"],
+      "status": "online",
+      "on_call": true
+    },
+    {
+      "id": "stk-002",
+      "name": "Tom Beckett",
+      "title": "Site Reliability Engineer I",
+      "primary_domain": "infrastructure",
+      "secondary_domains": [],
+      "seniority_tier": 1,
+      "preferred_channel": "slack",
+      "fallback_channels": ["email", "sms"],
+      "status": "online",
+      "on_call": true
+    },
+    {
+      "id": "stk-003",
+      "name": "Elena Fischer",
+      "title": "Director of Engineering",
+      "primary_domain": "infrastructure",
+      "secondary_domains": ["security"],
+      "seniority_tier": 5,
+      "preferred_channel": "sms",
+      "fallback_channels": ["email"],
+      "status": "offline",
+      "on_call": false
+    },
+    {
+      "id": "stk-004",
+      "name": "Marcus Webb",
+      "title": "Principal Network Architect",
+      "primary_domain": "networking",
+      "secondary_domains": ["infrastructure"],
+      "seniority_tier": 4,
+      "preferred_channel": "slack",
+      "fallback_channels": ["email"],
+      "status": "online",
+      "on_call": false
+    },
+    {
+      "id": "stk-005",
+      "name": "Aisha Kone",
+      "title": "Security Engineer II",
+      "primary_domain": "security",
+      "secondary_domains": ["infrastructure"],
+      "seniority_tier": 2,
+      "preferred_channel": "email",
+      "fallback_channels": ["slack"],
+      "status": "online",
+      "on_call": true
+    },
+    {
+      "id": "stk-006",
+      "name": "Sofia Marchetti",
+      "title": "Head of Security",
+      "primary_domain": "security",
+      "secondary_domains": [],
+      "seniority_tier": 4,
+      "preferred_channel": "slack",
+      "fallback_channels": ["sms", "email"],
+      "status": "busy",
+      "on_call": false
+    },
+    {
+      "id": "stk-007",
+      "name": "Daniel Ortiz",
+      "title": "Logistics Operations Lead",
+      "primary_domain": "logistics",
+      "secondary_domains": ["infrastructure", "procurement"],
+      "seniority_tier": 3,
+      "preferred_channel": "slack",
+      "fallback_channels": ["email", "sms"],
+      "status": "online",
+      "on_call": true
+    },
+    {
+      "id": "stk-008",
+      "name": "Rashid Haddad",
+      "title": "VP Supply Chain",
+      "primary_domain": "logistics",
+      "secondary_domains": ["procurement"],
+      "seniority_tier": 5,
+      "preferred_channel": "email",
+      "fallback_channels": ["sms"],
+      "status": "busy",
+      "on_call": false
+    },
+    {
+      "id": "stk-009",
+      "name": "Yuki Tanaka",
+      "title": "Procurement Analyst",
+      "primary_domain": "procurement",
+      "secondary_domains": ["infrastructure"],
+      "seniority_tier": 2,
+      "preferred_channel": "slack",
+      "fallback_channels": ["email"],
+      "status": "online",
+      "on_call": false
+    },
+    {
+      "id": "stk-010",
+      "name": "Nina Petrova",
+      "title": "Head of Procurement",
+      "primary_domain": "procurement",
+      "secondary_domains": ["logistics"],
+      "seniority_tier": 4,
+      "preferred_channel": "email",
+      "fallback_channels": ["slack", "sms"],
+      "status": "offline",
+      "on_call": false
+    }
+  ]
+}

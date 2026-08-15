@@ -1,0 +1,25 @@
+[project]
+name = "alert-routing-agent"
+version = "0.1.0"
+description = "Alert routing agent handling stakeholder availability shifts mid-dispatch"
+requires-python = ">=3.11"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test configuration — must exist BEFORE the first test is written
+# ─────────────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+
+# Without this, every async test needs an explicit @pytest.mark.asyncio and any
+# test missing one is silently skipped — a suite that reports green while
+# proving nothing.
+asyncio_mode = "auto"
+
+# Silences the pytest-asyncio deprecation warning about unset fixture loop
+# scope. "function" is what we want anyway: each test gets its own event loop,
+# so a hung task in one test cannot poison the next.
+asyncio_default_fixture_loop_scope = "function"
+
+# Makes `alert_router` importable from the repo root without `pip install -e .`.
+pythonpath = ["."]
+
+testpaths = ["tests"]

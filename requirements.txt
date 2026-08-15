@@ -1,0 +1,23 @@
+# Module 1 needs only the first four lines. The rest arrive in Modules 3-6 and
+# are pinned now so the environment does not shift mid-build.
+
+sqlalchemy>=2.0
+aiosqlite>=0.19
+pydantic>=2.6
+pydantic-settings>=2.2
+
+# Testing.
+# NOTE: pytest-asyncio is pinned to >=0.24, NOT >=0.23. Versions 0.23.0-0.23.5
+# shipped event-loop-scope regressions around async fixtures that produce
+# failures indistinguishable from application bugs.
+pytest>=8.0
+pytest-asyncio>=0.24
+freezegun>=1.4
+
+# Module 5 (explanation layer) and Module 6 (CLI + HTTP surface).
+openai>=1.14
+typer>=0.12
+rich>=13.7
+fastapi>=0.110
+uvicorn[standard]>=0.27
+httpx>=0.27
