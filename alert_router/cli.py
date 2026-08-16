@@ -17,6 +17,10 @@ watched — and the most important thing on screen is a 108-character line:
 Nothing is distinguished by COLOUR ALONE. Every suppression, every decision and
 every delivery carries a text label, because a reviewer watching a compressed
 recording on a laptop should not have to tell grey from slightly different grey.
+
+Rich markup is DISABLED on this console. Everything printed here is data, and a
+markup parser turned loose on data deletes whatever happens to look like a tag —
+see the comment on `console` below.
 """
 
 from __future__ import annotations
@@ -34,7 +38,16 @@ from .decisions import MATRIX
 from .scenarios import SCENARIO_NAMES, ScenarioResult, cleanup, run_all, run_scenario
 
 app = typer.Typer(add_completion=False, help="Alert routing agent — demo and inspection.")
-console = Console(width=100, highlight=False)
+# markup=False is not cosmetic. Rich parses `[...]` as style markup, and its tag
+# regex matches anything starting with a lowercase letter, `#`, `/` or `@`. The
+# alert descriptor ends in `[critical/infrastructure]` — lowercase — so Rich read
+# it as a style tag and silently DELETED it from the recipient's message, while
+# `[00]`, `[R3]` and `[CRITICAL]` survived because digits and capitals do not
+# match. Every string printed here is data, not markup, so the parser has nothing
+# legitimate to do and everything to lose. Disabling it console-wide also covers
+# the tables, where stakeholder names and suppression reasons are equally at the
+# mercy of whatever punctuation the data happens to contain.
+console = Console(width=100, highlight=False, markup=False)
 
 RULE = "─" * 96
 
