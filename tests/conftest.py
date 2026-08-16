@@ -55,6 +55,26 @@ class StepClock:
         return value
 
 
+@pytest.fixture(autouse=True)
+def _never_reach_the_network(monkeypatch):
+    """NO TEST MAY CALL THE OpenAI API. Applied to every test automatically.
+
+    This is not belt-and-braces, it is load-bearing. `executor.dispatch()`
+    renders an explanation after every commit, and `context.render()` reads
+    OPENAI_API_KEY from the environment — which `config.load_dotenv()` populates
+    from a developer's local `.env`. Without this fixture, every executor test
+    that commits makes a live HTTP request: billable, non-deterministic, and slow
+    enough to trip the suite's own timeouts. It turned a 5-second run into 34
+    seconds and produced an intermittent TimeoutError in a test about database
+    rows, which is a spectacularly misleading place for a network failure to
+    surface.
+
+    Tests that deliberately exercise the LLM path inject a fake client instead;
+    `client_factory` bypasses this check by design.
+    """
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+
+
 @pytest.fixture
 def db_url(tmp_path: Path) -> str:
     # as_posix() because this project is built on Windows, where str(Path)

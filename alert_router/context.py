@@ -91,16 +91,27 @@ def _chosen_because(
     line = f"{terms} = {chosen.score.qualification:g}"
 
     if attempt.role == "escalation":
-        # An escalation is justified against the person already notified, not
-        # against the runner-up — the question is "why ALSO you", not "why you".
-        incumbents = [
+        # An escalation is justified against the person we are escalating ABOVE,
+        # not against the runner-up — the question is "why ALSO you", not
+        # "why you".
+        #
+        # NOTE `attempted`, NOT JUST `notified`. Escalations run in parallel with
+        # the incumbent's dispatch, and in row R4 the escalation frequently
+        # commits FIRST — the incumbent is still mid-channel-failover and has not
+        # reached `notified` yet. Reading only `notified` silently dropped the
+        # one comparison this recipient most needs, and did so intermittently,
+        # depending on which task won the race.
+        peers = [
             candidate
             for candidate in state.plan.ladder
-            if candidate.snapshot.stakeholder.id in state.notified
-            and candidate.snapshot.stakeholder.id != chosen.snapshot.stakeholder.id
+            if candidate.snapshot.stakeholder.id != chosen.snapshot.stakeholder.id
+            and (
+                candidate.snapshot.stakeholder.id in state.notified
+                or candidate.snapshot.stakeholder.id in state.attempted
+            )
         ]
-        if incumbents:
-            other = max(incumbents, key=lambda c: c.score.qualification)
+        if peers:
+            other = max(peers, key=lambda c: c.score.qualification)
             return (
                 f"{line}; paged in parallel because that out-qualifies "
                 f"{other.snapshot.stakeholder.name} at "
@@ -145,6 +156,13 @@ def _considered_and_passed(
         if person_id == chosen.snapshot.stakeholder.id or person_id in state.notified:
             continue
         if person_id in state.suppressed:
+            continue
+        # Somebody still mid-dispatch has NOT been passed over — they are being
+        # contacted right now. Row R4 holds the incumbent on a persistent channel
+        # while escalating in parallel, so at the moment the escalation's
+        # envelope is compiled the incumbent is legitimately still `connecting`.
+        # Listing them as "considered and passed" would be a plain falsehood.
+        if record.state.is_pre_commit:
             continue
         candidate = state.candidate_for(person_id)
         name = candidate.snapshot.stakeholder.name if candidate else person_id
