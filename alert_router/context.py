@@ -39,6 +39,7 @@ the network.
 from __future__ import annotations
 
 import os
+from contextlib import suppress
 from typing import Callable
 
 from . import config
@@ -169,7 +170,63 @@ def _considered_and_passed(
         passed.append(
             (name, f"attempt {record.state.value}: {record.outcome_reason or 'no reason recorded'}")
         )
+
+    # And everyone the walk simply never got to. Without this the two scenarios
+    # in which nobody is suppressed and nothing fails — `escalate` and
+    # `failover` — hand the recipient an empty "passed over" list and a single
+    # runner-up, which does not answer the brief's "why you over OTHERS".
+    #
+    # It also closes the one honest hole in the demo: in `reroute`, Elena
+    # out-qualifies the person actually paged (140 vs 123) and the envelope
+    # never said so. Silence there looks like an oversight; the arithmetic
+    # shows it is a reachability decision that was made deliberately.
+    passed.extend(_never_reached(state, chosen))
     return tuple(passed)
+
+
+def _never_reached(
+    state: DispatchState, chosen: RankedCandidate
+) -> list[tuple[str, str]]:
+    """Ladder members who were neither contacted nor declined.
+
+    Their reason is positional rather than numeric: the ladder is walked in rank
+    order and stops at the first commit, so everybody below that point is
+    genuinely unexamined. Saying so is more honest than inventing a judgement
+    the system never made.
+    """
+    chosen_id = chosen.snapshot.stakeholder.id
+    total = len(state.plan.ladder)
+    rows: list[tuple[str, str]] = []
+
+    for candidate in state.plan.ladder:
+        person = candidate.snapshot.stakeholder
+        if person.id == chosen_id:
+            continue
+        if person.id in state.suppressed:
+            continue
+        if person.id in state.attempted or person.id in state.notified:
+            continue
+
+        score = candidate.score
+        detail = (
+            f"rank {candidate.rank} of {total}: qualification {score.qualification:g}, "
+            f"reachability {score.reachability} ({candidate.snapshot.status.value})"
+        )
+        if score.qualification > chosen.score.qualification:
+            # The uncomfortable case, stated first rather than buried: somebody
+            # MORE qualified was not contacted. Invariant I4 forbids routing
+            # DOWN through the floor; it does not promise the global maximum,
+            # because the global maximum may be unreachable.
+            detail += (
+                f" — out-qualifies this recipient at {chosen.score.qualification:g} "
+                "but ranks below them on reachability, and the ladder walk "
+                "committed before reaching them"
+            )
+        else:
+            detail += " — the ladder walk committed before reaching them"
+        rows.append((person.name, detail))
+
+    return rows
 
 
 def compile_envelope(
@@ -218,7 +275,10 @@ def render_template(envelope: NotificationEnvelope) -> str:
     alert = envelope.alert
     lines = [
         f"[{alert.severity.value.upper()}] {alert.describe()}",
-        f"breach magnitude: {alert.breach_magnitude:.0%} past threshold",
+        # "past" is wrong for a depletion breach: warehouse stock crosses its
+        # threshold by FALLING. The word has to follow `direction`.
+        f"breach magnitude: {alert.breach_magnitude:.0%} "
+        f"{'below' if alert.direction == 'below' else 'past'} threshold",
         "",
         f"You are the {envelope.role} recipient, contacted on "
         f"{envelope.channel.value}.",
@@ -298,9 +358,23 @@ async def render(
         # unsupported keyword would raise TypeError, which the except below would
         # silently turn into a template render. Fewer knobs, fewer silent
         # downgrades.
-        response = await client.responses.create(
-            model=config.OPENAI_MODEL, input=_prompt(envelope)
-        )
+        try:
+            response = await client.responses.create(
+                model=config.OPENAI_MODEL, input=_prompt(envelope)
+            )
+        finally:
+            # CLOSE A CLIENT WE OPENED. Its underlying HTTP pool schedules an
+            # async teardown, and the CLI runs one asyncio.run() per scenario —
+            # so an unclosed pool tries to close itself against a loop that has
+            # already gone, printing a RuntimeError traceback between scenarios.
+            # Harmless, and extremely ugly in the middle of a recorded demo.
+            # Only ours: an injected test client is the caller's to manage.
+            if client_factory is None:
+                closer = getattr(client, "close", None)
+                if closer is not None:
+                    with suppress(Exception):
+                        await closer()
+
         body = (getattr(response, "output_text", "") or "").strip()
         if not body:
             raise ValueError("model returned an empty completion")

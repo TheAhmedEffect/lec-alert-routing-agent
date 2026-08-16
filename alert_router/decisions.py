@@ -180,6 +180,7 @@ def _r1(ctx: Ctx) -> bool:
 
 
 def _r2(ctx: Ctx) -> bool:
+    """Presence dropped, pre-commit, on a PERSISTENT channel — it waits on the device."""
     return (
         _is_presence_drop(ctx)
         and ctx.about_incumbent
@@ -190,6 +191,7 @@ def _r2(ctx: Ctx) -> bool:
 
 
 def _r3(ctx: Ctx) -> bool:
+    """Presence dropped, pre-commit, synchronous channel, and somebody clears the floor."""
     return (
         _is_presence_drop(ctx)
         and ctx.about_incumbent
@@ -201,6 +203,7 @@ def _r3(ctx: Ctx) -> bool:
 
 
 def _r4(ctx: Ctx) -> bool:
+    """Presence dropped, pre-commit, synchronous channel, and NOBODY clears the floor."""
     return (
         _is_presence_drop(ctx)
         and ctx.about_incumbent
@@ -212,12 +215,14 @@ def _r4(ctx: Ctx) -> bool:
 
 
 def _r5(ctx: Ctx) -> bool:
+    """The identical presence drop, but POST-commit — the message already exists."""
     # Same event as R2 and R3. ONLY the phase differs, and the phase comes from
     # AttemptState.is_pre_commit — never inferred from anything else.
     return _is_presence_drop(ctx) and ctx.about_incumbent and not ctx.pre_commit
 
 
 def _r6(ctx: Ctx) -> bool:
+    """The in-flight channel degraded and a healthy fallback transport exists."""
     return (
         ctx.event.kind is InterruptKind.CHANNEL_DEGRADED
         and ctx.about_incumbent
@@ -228,6 +233,7 @@ def _r6(ctx: Ctx) -> bool:
 
 
 def _r7(ctx: Ctx) -> bool:
+    """The channel degraded and no healthy transport remains for this person."""
     return (
         ctx.event.kind is InterruptKind.CHANNEL_DEGRADED
         and ctx.about_incumbent
@@ -237,6 +243,7 @@ def _r7(ctx: Ctx) -> bool:
 
 
 def _r8(ctx: Ctx) -> bool:
+    """A better match appeared, but they have already been notified."""
     return (
         ctx.event.kind is InterruptKind.BETTER_MATCH
         and ctx.event.stakeholder_id in ctx.state.notified
@@ -244,6 +251,7 @@ def _r8(ctx: Ctx) -> bool:
 
 
 def _r9(ctx: Ctx) -> bool:
+    """A better match who out-qualifies the incumbent, on a HIGH or CRITICAL alert."""
     return (
         ctx.event.kind is InterruptKind.BETTER_MATCH
         and ctx.subject is not None
@@ -254,6 +262,7 @@ def _r9(ctx: Ctx) -> bool:
 
 
 def _r10(ctx: Ctx) -> bool:
+    """A better match appeared, but the alert is LOW severity."""
     return (
         ctx.event.kind is InterruptKind.BETTER_MATCH
         and ctx.severity is Severity.LOW
@@ -261,6 +270,7 @@ def _r10(ctx: Ctx) -> bool:
 
 
 def _r11(ctx: Ctx) -> bool:
+    """The ladder is exhausted and nothing was ever committed."""
     return not ctx.state.notified and not ctx.state.remaining
 
 

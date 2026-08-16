@@ -194,3 +194,13 @@ from .context import (  # noqa: E402
 )
 
 __all__ += ["compile_envelope", "deliver_envelope", "render", "render_template"]
+
+# ── Module 6 surface ─────────────────────────────────────────────────────────
+from .scenarios import (  # noqa: E402
+    SCENARIO_NAMES,
+    ScenarioResult,
+    run_all,
+    run_scenario,
+)
+
+__all__ += ["SCENARIO_NAMES", "ScenarioResult", "run_scenario", "run_all"]

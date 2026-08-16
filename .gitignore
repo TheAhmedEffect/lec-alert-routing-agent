@@ -1,10 +1,44 @@
-.venv/
-venv/
-__pycache__/
-*.py[cod]
+# ─────────────────────────────────────────────────────────────────────────────
+# Secrets — never committed.
+#
+# `.env` is where a real OPENAI_API_KEY lives. `.env.example` is the template
+# and IS committed, which is why the negation below is not optional: a bare
+# `.env*` pattern would silently swallow the template and leave reviewers with
+# no documentation of the configuration at all.
+# ─────────────────────────────────────────────────────────────────────────────
 .env
+.env.*
+!.env.example
+
+# Databases. WAL leaves -wal and -shm sidecars that preserve state on their own,
+# so the glob matters — deleting only `alert_router.db` does not reset anything.
 *.db
 *.db-wal
 *.db-shm
+alert_router.db*
+scenario_*.db*
+verify_module*.db*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Tooling
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Editors and OS
+.vscode/
+.idea/
 .DS_Store
+Thumbs.db
