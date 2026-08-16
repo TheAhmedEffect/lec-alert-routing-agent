@@ -173,6 +173,16 @@ class Subscription:
             return None
         return None if item is _CLOSED else item
 
+    def stop(self) -> None:
+        """End THIS subscription's iteration without closing the whole bus.
+
+        Added in Module 3. A listener task needs a way to finish cleanly once
+        its dispatch completes. Cancelling the task instead would make a normal
+        shutdown indistinguishable from a failure inside a TaskGroup, and
+        bus.close() would silently end every other subscriber too.
+        """
+        self._queue.put_nowait(_CLOSED)
+
     def unsubscribe(self) -> None:
         if self._active:
             self._bus._unregister(self._queue)

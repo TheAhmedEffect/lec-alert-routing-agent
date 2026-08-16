@@ -20,11 +20,15 @@ TWO THINGS HERE ARE LOAD-BEARING
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pytest
 
 from alert_router import config
+from alert_router.agent import AlertAgent
+from alert_router.channels import ChannelBank
+from alert_router.executor import DispatchExecutor
 from alert_router.db import build_engine, build_session_factory, init_db
 from alert_router.ranking import build_ladder
 from alert_router.registry import PresenceBus, Registry, zero_latency
@@ -147,6 +151,55 @@ def offline_state(critical_alert, snapshots, clock) -> DispatchState:
     contention noise without adding evidence.
     """
     return DispatchState.start(critical_alert, snapshots, clock=clock)
+
+
+class PhaseGate:
+    """Park the executor at a known phase until the test releases it.
+
+    THIS IS WHY MODULE 3'S SUITE IS NOT FLAKY. Landing an interrupt "at t+0.8s"
+    races the scheduler: it passes on one machine and fails on another, and the
+    failure looks like a routing bug. A gate makes pre-commit and post-commit
+    something the test CHOOSES rather than something it hopes for.
+    """
+
+    def __init__(self) -> None:
+        self.reached = asyncio.Event()
+        self.release = asyncio.Event()
+        self.hits = 0
+
+    async def __call__(self, attempt) -> None:
+        self.hits += 1
+        self.reached.set()
+        await self.release.wait()
+
+    async def wait(self, timeout: float = 3.0) -> None:
+        """Block until the executor has parked here."""
+        await asyncio.wait_for(self.reached.wait(), timeout)
+
+    def open(self) -> None:
+        self.release.set()
+
+
+@pytest.fixture
+def gate() -> PhaseGate:
+    return PhaseGate()
+
+
+@pytest.fixture
+def bank() -> ChannelBank:
+    """Adapters with near-zero latency. The demo uses realistic delays; the
+    suite must not, or nobody runs it."""
+    return ChannelBank(connect_seconds=0.0, send_seconds=0.0)
+
+
+@pytest.fixture
+def executor(session_factory, bank, clock) -> DispatchExecutor:
+    return DispatchExecutor(session_factory, bank, clock=clock)
+
+
+@pytest.fixture
+def agent(registry, session_factory, bank, clock) -> AlertAgent:
+    return AlertAgent(registry, session_factory, bank, clock=clock)
 
 
 @pytest.fixture

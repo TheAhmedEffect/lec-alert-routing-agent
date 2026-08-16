@@ -44,6 +44,7 @@ from .schemas import (
     CandidateSnapshot,
     DispatchPlan,
     InterruptEvent,
+    NotificationEnvelope,
     RankedCandidate,
 )
 
@@ -105,6 +106,12 @@ class DispatchState:
     attempted: dict[str, AttemptRecord] = field(default_factory=dict)
     notified: set[str] = field(default_factory=set)
     suppressed: dict[str, str] = field(default_factory=dict)
+
+    #: One rendered explanation per notified person. Populated by
+    #: context.deliver_envelope() after each commit. Keyed by stakeholder
+    #: because row R4 notifies two people with different roles and each
+    #: needs their own "why you".
+    envelopes: dict[str, NotificationEnvelope] = field(default_factory=dict)
 
     current_attempt: AttemptRecord | None = None
     plan_version: int = 1
@@ -313,14 +320,22 @@ class DispatchState:
 
     # ── attempts ────────────────────────────────────────────────────────────
 
-    def register_attempt(self, attempt: AttemptRecord) -> None:
-        """Put an attempt in the `attempted` ledger and make it current.
+    def register_attempt(
+        self, attempt: AttemptRecord, *, make_current: bool = True
+    ) -> None:
+        """Put an attempt in the `attempted` ledger.
 
         Called at RESERVE, before anything is sent — which is exactly why an
         abort still blocks a retry.
+
+        `make_current=False` is for PARALLEL ESCALATIONS (rows R4, R5, R9). Those
+        run alongside the primary dispatch, and the decision matrix keys R2 vs R5
+        off `current_attempt`'s phase — so letting an escalation overwrite the
+        incumbent would silently change which row fires for the next event.
         """
         self.attempted[attempt.stakeholder_id] = attempt
-        self.current_attempt = attempt
+        if make_current:
+            self.current_attempt = attempt
 
     def mark_notified(self, stakeholder_id: str) -> None:
         """Promote to the `notified` ledger. COMMITTED attempts only.

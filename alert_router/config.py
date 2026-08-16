@@ -23,6 +23,7 @@ participate in a circular import.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Final
 
@@ -48,6 +49,29 @@ DB_PATH: Final[Path] = PROJECT_ROOT / DB_FILENAME
 #: by SQLite on every platform, so as_posix() is portable rather than merely
 #: tidy — and this project is being built on Windows.
 DB_URL: Final[str] = f"sqlite+aiosqlite:///{DB_PATH.as_posix()}"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Local secrets
+# ─────────────────────────────────────────────────────────────────────────────
+# Load .env if it exists, so a developer's own OPENAI_API_KEY works without
+# exporting it into the shell every session.
+#
+# THIS MUST RUN BEFORE ANY os.getenv() BELOW, which is why it sits here rather
+# than next to the OpenAI settings.
+#
+# `.env` is gitignored and is never committed. The repository ships with only
+# `.env.example`, holding an empty value — anyone cloning this runs the
+# deterministic template renderer and gets an identical system. A key is a
+# convenience for the author, never a requirement for the reviewer.
+#
+# Wrapped because python-dotenv arrives as a transitive dependency of
+# pydantic-settings; the system must not care whether it is present.
+try:  # pragma: no cover - trivial import guard
+    from dotenv import load_dotenv
+
+    load_dotenv(PROJECT_ROOT / ".env")
+except Exception:  # noqa: BLE001
+    pass
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SQLite connection pragmas
@@ -160,6 +184,7 @@ AUDIT_KINDS: Final[tuple[str, ...]] = (
     "COMMITTED",
     "SUPPRESSED",
     "EXHAUSTED",
+    "RENDERED",
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -217,3 +242,26 @@ MIN_QUALIFICATION: Final[dict[str, float]] = {
 #: CRITICAL alert the floor is max(120, 139-25) = 120, so Tom clears it at 123
 #: and is refused at 108. Both branches are demonstrated in the demo scenarios.
 DOWNGRADE_TOLERANCE: Final[float] = 25.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# The explanation layer  [Module 5]
+# ─────────────────────────────────────────────────────────────────────────────
+# The LLM renders PROSE about a decision that has already been made. It never
+# selects a recipient, never ranks, and has no tools. Everything below is
+# therefore about presentation, not routing — and all of it is optional: with no
+# API key the deterministic template runs instead and the system behaves
+# identically.
+
+#: Overridable because model availability differs per account. The library
+#: installed here is openai 3.x, whose Responses API takes `input=` and returns
+#: `.output_text` — a different shape from the 1.x `chat.completions` examples
+#: that most documentation still shows.
+OPENAI_MODEL: Final[str] = os.getenv("OPENAI_MODEL", "gpt-5.5")
+
+#: A slow explanation is worse than a plain one: the notification is already
+#: committed by the time we render, so nothing downstream should wait long.
+OPENAI_TIMEOUT_SECONDS: Final[float] = 20.0
+
+#: Bounds the prose. The envelope's structured fields carry the actual argument;
+#: this is only the human-readable wrapper around them.
+MAX_EXPLANATION_CHARS: Final[int] = 1200

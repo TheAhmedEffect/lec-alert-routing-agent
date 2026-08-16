@@ -458,6 +458,10 @@ class RoutingDecision(BaseModel):
     action: DecisionAction
     target_id: str | None = None
     escalate_to_id: str | None = None
+    #: Where a CHANNEL_FAILOVER or a HOLD_AND_ESCALATE_UP should move the
+    #: incumbent. Added in Module 4: rows R6 and R4 both change the pipe without
+    #: changing the person, so the decision has to be able to say which pipe.
+    target_channel: Channel | None = None
     rationale: str
     #: 'R4' — traceable to the decision matrix. Present on EVERY decision,
     #: including the boring CONTINUE_UNCHANGED ones, so the audit trail can be

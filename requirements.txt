@@ -5,6 +5,7 @@ sqlalchemy>=2.0
 aiosqlite>=0.19
 pydantic>=2.6
 pydantic-settings>=2.2
+python-dotenv>=1.0      # loads a local .env; the key it holds is optional
 
 # Testing.
 # NOTE: pytest-asyncio is pinned to >=0.24, NOT >=0.23. Versions 0.23.0-0.23.5

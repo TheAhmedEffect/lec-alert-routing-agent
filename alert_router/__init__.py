@@ -134,3 +134,63 @@ __all__ = [
     "Severity",
     "StakeholderRecord",
 ]
+
+# ── Module 3 surface ─────────────────────────────────────────────────────────
+from .agent import AlertAgent  # noqa: E402
+from .channels import (  # noqa: E402
+    ChannelAdapter,
+    ChannelBank,
+    ChannelConnectError,
+    ChannelError,
+    ChannelSendError,
+    first_healthy_channel,
+    first_persistent_channel,
+    healthy_channels,
+)
+from .executor import (  # noqa: E402
+    DispatchExecutor,
+    DuplicateDispatchError,
+    IllegalTransition,
+    LEGAL_TRANSITIONS,
+    PhaseHooks,
+)
+from .interrupts import InterruptListener  # noqa: E402
+
+__all__ += [
+    "AlertAgent",
+    "ChannelAdapter",
+    "ChannelBank",
+    "ChannelError",
+    "ChannelConnectError",
+    "ChannelSendError",
+    "healthy_channels",
+    "first_healthy_channel",
+    "first_persistent_channel",
+    "DispatchExecutor",
+    "DuplicateDispatchError",
+    "IllegalTransition",
+    "LEGAL_TRANSITIONS",
+    "PhaseHooks",
+    "InterruptListener",
+]
+
+# ── Module 4 surface ─────────────────────────────────────────────────────────
+from .decisions import (  # noqa: E402
+    MATRIX,
+    ROW_IDS,
+    ChannelFacts,
+    NoMatchingRow,
+    decide,
+)
+
+__all__ += ["MATRIX", "ROW_IDS", "ChannelFacts", "NoMatchingRow", "decide"]
+
+# ── Module 5 surface ─────────────────────────────────────────────────────────
+from .context import (  # noqa: E402
+    compile_envelope,
+    deliver_envelope,
+    render,
+    render_template,
+)
+
+__all__ += ["compile_envelope", "deliver_envelope", "render", "render_template"]
