@@ -1,5 +1,3 @@
-
-
 from .config import (
     DB_URL,
     DOMAIN_POINTS,
