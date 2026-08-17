@@ -7,7 +7,7 @@ The brief's hard requirement is a contradiction on its face: *detect mid-executi
 availability has changed*, and *do not re-query stakeholders you have already evaluated*. You
 cannot notice a change you have forbidden yourself to look for. The resolution is that the
 registry has **two verbs** — a counted *pull* and a free *push* that carries the new state in its
-payload. The look comes to you.
+payload.
 
 ---
 
