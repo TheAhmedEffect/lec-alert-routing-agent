@@ -1,24 +1,6 @@
 """
 Top-level orchestration: one alert, two concurrent tasks, one frozen ladder.
 
-THE ORDERING THAT MATTERS MOST IN THIS FILE
--------------------------------------------
-`bus.subscribe()` is called in the PARENT coroutine, before either task starts,
-and the resulting Subscription is passed in. Subscription registers its queue
-synchronously in __init__ (see registry.py), so subscribing here guarantees the
-listener's queue exists before dispatch can publish anything. Doing it inside the
-listener task body registers at an unpredictable moment, and an event published
-in the gap is lost — the wrong decision row fires, roughly one run in twenty.
-
-WHERE THE DECISION MATRIX PLUGS IN (Module 4)
----------------------------------------------
-`decisions.decide()` is PURE: facts in, RoutingDecision out. Every effect lives
-in `apply()` below. That split is what lets the eleven-row truth table be tested
-in milliseconds without a database, and it keeps the one place that can change
-the world small enough to read in a sitting.
-
-The one impure input the matrix needs — which transports are currently healthy —
-is resolved here, in `_channel_facts()`, and passed in.
 """
 
 from __future__ import annotations
