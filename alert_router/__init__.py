@@ -1,3 +1,28 @@
+"""
+Alert routing agent — LEC AI build assessment.
+
+An agent that routes operational alerts to the right stakeholder, and handles
+the case where availability changes WHILE the notification is being sent.
+
+The four invariants, and where each one actually lives:
+
+  I1  Context is never lost across a re-route
+      -> frozen Pydantic models (schemas.py) + append-only audit_events
+  I2  Nobody is notified twice
+      -> UNIQUE(dispatch_attempts.idempotency_key) in models_orm.py
+  I3  One availability query per person per alert
+      -> PRIMARY KEY(evaluations.alert_id, stakeholder_id) in models_orm.py
+  I4  Never escalate downward
+      -> qualification carries no availability term (ranking.py, Module 2)
+
+Two of those are database constraints rather than code paths. A second
+availability query is not a bug this system tries to avoid; it is a write the
+database refuses.
+
+Module 1 surface only. Later modules add ranking, state, executor, decisions,
+context, api and cli.
+"""
+
 from .config import (
     DB_URL,
     DOMAIN_POINTS,

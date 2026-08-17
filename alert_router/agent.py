@@ -1,6 +1,24 @@
 """
 Top-level orchestration: one alert, two concurrent tasks, one frozen ladder.
 
+THE ORDERING THAT MATTERS MOST IN THIS FILE
+-------------------------------------------
+`bus.subscribe()` is called in the PARENT coroutine, before either task starts,
+and the resulting Subscription is passed in. Subscription registers its queue
+synchronously in __init__ (see registry.py), so subscribing here guarantees the
+listener's queue exists before dispatch can publish anything. Doing it inside the
+listener task body registers at an unpredictable moment, and an event published
+in the gap is lost — the wrong decision row fires, roughly one run in twenty.
+
+WHERE THE DECISION MATRIX PLUGS IN (Module 4)
+---------------------------------------------
+`decisions.decide()` is PURE: facts in, RoutingDecision out. Every effect lives
+in `apply()` below. That split is what lets the eleven-row truth table be tested
+in milliseconds without a database, and it keeps the one place that can change
+the world small enough to read in a sitting.
+
+The one impure input the matrix needs — which transports are currently healthy —
+is resolved here, in `_channel_facts()`, and passed in.
 """
 
 from __future__ import annotations
@@ -64,7 +82,7 @@ class AlertAgent:
         self._side_tasks: list[asyncio.Task] = []
         self.decisions: list[RoutingDecision] = []
 
-    #entry point
+    # ── entry point ─────────────────────────────────────────────────────────
 
     async def handle(self, alert: AlertEvent) -> DispatchState:
         snapshots = await self.registry.query_by_domain(alert)   # the ONE pull
@@ -102,7 +120,7 @@ class AlertAgent:
             },
         )
 
-        #SUBSCRIBE IN THE PARENT.
+        # SUBSCRIBE IN THE PARENT — see the module docstring.
         subscription = self.registry.bus.subscribe()
         self.listener = InterruptListener(
             state, subscription, handler=self.on_interrupt, clock=self._clock
@@ -125,7 +143,7 @@ class AlertAgent:
         await self._finalise(state)
         return state
 
-    #the decision path
+    # ── the decision path ───────────────────────────────────────────────────
 
     async def _channel_facts(self, state: DispatchState, attempt) -> ChannelFacts:
         """Resolve the one impure input the matrix needs.
@@ -174,9 +192,9 @@ class AlertAgent:
             {"action": decision.action.value, "matrix_row": decision.matrix_row},
         )
 
-        #Suppression is recorded for EVERY decision that carries it,
-        #R4. The numeric reason is the argument; dropping it turns a defensible
-        #refusal into an unexplained skip.
+        # Suppression is recorded for EVERY decision that carries it, not just
+        # R4. The numeric reason is the argument; dropping it turns a defensible
+        # refusal into an unexplained skip.
         for person_id, why in decision.suppressed:
             if person_id not in state.suppressed:
                 state.mark_suppressed(person_id, why)
@@ -192,8 +210,8 @@ class AlertAgent:
             return
 
         if action is DecisionAction.CHANNEL_FAILOVER:
-            #Same person, same idempotency key, different pipe. The ladder walk
-            #performs it once the in-flight send has stopped — see _walk_ladder.
+            # Same person, same idempotency key, different pipe. The ladder walk
+            # performs it once the in-flight send has stopped — see _walk_ladder.
             if decision.target_channel is not None:
                 self.executor.pending_failover = decision.target_channel
                 self.executor.request_abort(
@@ -204,10 +222,10 @@ class AlertAgent:
         if action is DecisionAction.ABORT_AND_REROUTE:
             aborted = self.executor.request_abort(decision.rationale)
             if not aborted:
-                #THE COMMIT POINT MOVED UNDER US. The message has already
-                #landed, so R3 is no longer available and pretending otherwise
-                #would notify a second person about a delivered alert. The
-                #honest correction is R5: supplement, never retract.
+                # THE COMMIT POINT MOVED UNDER US. The message has already
+                # landed, so R3 is no longer available and pretending otherwise
+                # would notify a second person about a delivered alert. The
+                # honest correction is R5: supplement, never retract.
                 fallback = best_by_qualification(state.remaining)
                 await state.record_audit(
                     "DECISION",
@@ -222,15 +240,15 @@ class AlertAgent:
             return
 
         if action is DecisionAction.HOLD_AND_ESCALATE_UP:
-            #Obligation 1 — keep the incumbent, on a channel that survives them
-            #being away from their desk.
+            # Obligation 1 — keep the incumbent, on a channel that survives them
+            # being away from their desk.
             if decision.target_channel is not None:
                 self.executor.pending_failover = decision.target_channel
                 self.executor.request_abort(
                     "holding the incumbent on a persistent channel"
                 )
-            #Obligation 2 — page the most qualified member, in parallel.
-            #(Obligation 3, the numeric suppression, was recorded above.)
+            # Obligation 2 — page the most qualified member, in parallel.
+            # (Obligation 3, the numeric suppression, was recorded above.)
             self._spawn_escalation_by_id(state, decision.escalate_to_id)
             return
 
@@ -238,7 +256,7 @@ class AlertAgent:
             self._spawn_escalation_by_id(state, decision.escalate_to_id)
             return
 
-    #parallel escalation
+    # ── parallel escalation ─────────────────────────────────────────────────
 
     def _spawn_escalation_by_id(
         self, state: DispatchState, target_id: str | None
@@ -247,8 +265,8 @@ class AlertAgent:
             return
         candidate = state.candidate_for(target_id)
         if candidate is None:
-            #Guardrail: escalating to a non-member would mean learning about
-            #somebody we never paid to evaluate, which breaks invariant I3.
+            # Guardrail: escalating to a non-member would mean learning about
+            # somebody we never paid to evaluate, which breaks invariant I3.
             return
         self._spawn_escalation(state, candidate)
 
@@ -257,7 +275,7 @@ class AlertAgent:
     ) -> None:
         person_id = candidate.snapshot.stakeholder.id
         if person_id in state.attempted or person_id in state.notified:
-            return  #I2: never notify the same person twice
+            return  # I2: never notify the same person twice
         task = asyncio.create_task(
             self._escalate(state, candidate), name=f"escalate-{person_id}"
         )
