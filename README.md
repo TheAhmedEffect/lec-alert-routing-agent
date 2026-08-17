@@ -345,6 +345,8 @@ Stated plainly, because knowing what you did not build is part of the work.
 - **`on_call` is a boolean, not a rota.** No time zones, no shift handover.
 - **No rate limiting on escalation storms.** A flapping stakeholder could generate repeated
   `BETTER_MATCH` derivations; they are deduplicated per person, not per unit time.
+- "No cross-alert coordination. Three simultaneous breaches in one domain can all route to the same person;
+   load balancing needs a global claim, which is a Postgres SKIP LOCKED change rather than a SQLite one.  
 
 ---
 
